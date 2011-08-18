@@ -9,7 +9,6 @@ from base64 import b64encode
 from xml.dom.minidom import Document, parseString
 from tempfile import mktemp
 from Config import *
-from gevent import sleep
 
 class Index:
     def __init__(self, db=''):
@@ -59,7 +58,7 @@ class Index:
     def add_data(self, data, iv, hash):
         c = self.db.cursor()
         try:
-            c.execute('INSERT INTO datas VALUES (NULL, "'+b64encode(data)+'", "'+b64encode(iv)+'", "'+b64encode(hash)+'")')
+            c.execute('INSERT INTO datas VALUES (NULL, "'+b64encode(data).decode()+'", "'+b64encode(iv).decode()+'", "'+b64encode(hash).decode()+'")')
             self.db.commit()
         except:
             raise
@@ -73,7 +72,7 @@ class Index:
             c.execute('DELETE FROM datas WHERE id=%d' % id)
             self.db.commit()
             if c.rowcount == 0:
-                raise Exception, "FAIL to rm_data"
+                raise Exception("FAIL to rm_data")
         except:
             raise
 
@@ -97,7 +96,6 @@ class Index:
         res = Document()
         xml = res.createElement("datas")
         for i in buff:
-            sleep(0)
             data = res.createElement("data")
             data.setAttribute("id", str(i[0]))
             data.setAttribute("data", i[1])
@@ -115,7 +113,6 @@ class Index:
             xml = parseString(xml)
             index = xml.getElementsByTagName("data")
             for i in index:
-                sleep(0)
                 c.execute('INSERT INTO datas VALUES(%d, "%s", "%s", "%s")' % (int(i.getAttribute("id")), i.getAttribute("data"), i.getAttribute("iv"), i.getAttribute("hash")))
         except:
             raise

@@ -16,11 +16,13 @@ def LoadLibrary():
 			raise Exception("Couldn't load OpenSSL lib ...")
 	return libcrypto
 
+libcrypto = LoadLibrary()
+
 class ECC_key:
 	def __init__(self, pubkey_x = 0, pubkey_y = 0, privkey = 0):
 		self.curve = 734 # == NID_sect571r1
 		self.SIZE_ECC_KEY = 72 # With NID_sect571r1
-		self.libcrypto = LoadLibrary()
+		global libcrypto; self.libcrypto = libcrypto
 		if pubkey_x != 0 and pubkey_y != 0:		
 			if self.Check_EC_Key(privkey, pubkey_x, pubkey_y) < 0:
 				self.pubkey_x = 0
@@ -267,65 +269,66 @@ class ECC_key:
 			self.libcrypto.EVP_MD_CTX_destroy(md_ctx)
 
 def rand(size):
-	libcrypto = LoadLibrary()
-	buffer = malloc(0, size)
-	libcrypto.RAND_bytes(buffer, size)
-	return buffer.raw
+    global libcrypto
+    buffer = malloc(0, size)
+    libcrypto.RAND_bytes(buffer, size)
+    return buffer.raw
 
 def malloc(data, size):
-	if data != 0:
-		buffer = create_string_buffer(data, size)
-	else:
-		buffer = create_string_buffer(size)
-	return buffer
+    if data != 0:
+        if type(data) == type(''): data = data.encode()
+        buffer = create_string_buffer(data, size)
+    else:
+        buffer = create_string_buffer(size)
+    return buffer
 
 class aes:
 	def __init__(self, key, iv, do, mode='cfb'): # do == 1 => Encrypt; do == 0 => Decrypt
-		self.libcrypto = LoadLibrary()
-		self.ctx = self.libcrypto.EVP_CIPHER_CTX_new()
-		if do == 1 or do == 0:
-			k = malloc(key, len(key))
-			IV = malloc(iv, len(iv))
-			self.libcrypto.EVP_CipherInit_ex.argtypes = [ c_void_p, c_void_p, c_void_p, c_void_p, c_void_p, c_void_p]
-			if mode == 'cbc':
-				self.libcrypto.EVP_aes_256_cbc.restype = c_void_p
-				self.libcrypto.EVP_CipherInit_ex(self.ctx, self.libcrypto.EVP_aes_256_cbc(), 0, k, IV, do)
-			elif mode == 'cfb':
-				self.libcrypto.EVP_aes_256_cfb128.restype = c_void_p
-				self.libcrypto.EVP_CipherInit_ex(self.ctx, self.libcrypto.EVP_aes_256_cfb128(), 0, k, IV, do)
-			else:
-				raise Exception("Unknown mode")
-		else:
-			raise Exception("RTFM ...")
+            global libcrypto; self.libcrypto = libcrypto
+            self.ctx = self.libcrypto.EVP_CIPHER_CTX_new()
+            if do == 1 or do == 0:
+                k = malloc(key, len(key))
+                IV = malloc(iv, len(iv))
+                self.libcrypto.EVP_CipherInit_ex.argtypes = [ c_void_p, c_void_p, c_void_p, c_void_p, c_void_p, c_void_p]
+                if mode == 'cbc':
+                    self.libcrypto.EVP_aes_256_cbc.restype = c_void_p
+                    self.libcrypto.EVP_CipherInit_ex(self.ctx, self.libcrypto.EVP_aes_256_cbc(), 0, k, IV, do)
+                elif mode == 'cfb':
+                    self.libcrypto.EVP_aes_256_cfb128.restype = c_void_p
+                    self.libcrypto.EVP_CipherInit_ex(self.ctx, self.libcrypto.EVP_aes_256_cfb128(), 0, k, IV, do)
+                else:
+                    raise Exception("Unknown mode")
+            else:
+                raise Exception("RTFM ...")
 
 	def ciphering(self, input):
-		i = c_int(len(input))
-		buffer = malloc(0, len(input)+16)
-		inp = malloc(input,len(input))
-		if (self.libcrypto.EVP_CipherUpdate(self.ctx, byref(buffer), byref(i), inp, len(input))) == 0:
-			raise Exception("[OpenSSL] EVP_CipherUpdate FAIL ...")
-		y = i.value
-		i.value = 0
-		if (self.libcrypto.EVP_CipherFinal_ex(self.ctx, byref(buffer,y), byref(i))) == 0:
-			raise Exception("[OpenSSL] EVP_CipherFinal_ex FAIL ...")
-		return buffer.raw[0:i.value+y]
+            i = c_int(len(input))
+            buffer = malloc(0, len(input)+16)
+            inp = malloc(input,len(input))
+            if (self.libcrypto.EVP_CipherUpdate(self.ctx, byref(buffer), byref(i), inp, len(input))) == 0:
+                raise Exception("[OpenSSL] EVP_CipherUpdate FAIL ...")
+            y = i.value
+            i.value = 0
+            if (self.libcrypto.EVP_CipherFinal_ex(self.ctx, byref(buffer,y), byref(i))) == 0:
+                raise Exception("[OpenSSL] EVP_CipherFinal_ex FAIL ...")
+            return buffer.raw[0:i.value+y]
 
 	def __del__(self):
 		self.libcrypto.EVP_CIPHER_CTX_cleanup(self.ctx)
 		self.libcrypto.EVP_CIPHER_CTX_free(self.ctx)
 
 def Hmac(k, m):
-	key = malloc(k, len(k))
-	d = malloc(m, len(m))
-	md = malloc(0, 64)
-	i = pointer(c_int(0))
-	libcrypto = LoadLibrary()
-	# For 64bits
-	libcrypto.HMAC.argtypes = [ c_void_p, c_void_p, c_int, c_void_p, c_int, c_void_p]
-	libcrypto.EVP_sha512.restype = c_void_p
-	#
-	libcrypto.HMAC(libcrypto.EVP_sha512(), key, len(k), d, len(m), md, i)
-	return md.raw
+    key = malloc(k, len(k))
+    d = malloc(m, len(m))
+    md = malloc(0, 64)
+    i = pointer(c_int(0))
+    global libcrypto
+    # For 64bits
+    libcrypto.HMAC.argtypes = [ c_void_p, c_void_p, c_int, c_void_p, c_int, c_void_p]
+    libcrypto.EVP_sha512.restype = c_void_p
+    #
+    libcrypto.HMAC(libcrypto.EVP_sha512(), key, len(k), d, len(m), md, i)
+    return md.raw
 
 class ECDH:
 	def __init__(self, ecc, pubkey=None):

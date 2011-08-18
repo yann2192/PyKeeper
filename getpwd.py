@@ -9,7 +9,7 @@ import string
 from getpass import getpass
 
 class _getpwd(object):
-    base = string.digits+string.letters+string.punctuation
+    base = string.digits+string.ascii_letters+string.punctuation
     def __init__(self):
         self.table = [None]*len(self.base)
         for i in self.base:
@@ -32,13 +32,13 @@ class _getpwd(object):
     def get(self, inp):
         inp = getpass(inp)
         if len(inp) % 2 != 0:
-            raise Exception, "Error"
+            raise Exception("Error")
         pwd = ""
         for i in range(0, len(inp), 2):
             if inp[i] < 'A' or inp[i] > 'P' or inp[i+1] < '1' or inp[i+1] > '6':
-                raise Exception, "Error"
+                raise Exception("Error")
             if inp[i+1] == '6' and inp[i] > 'O':
-                raise Exception, "Error"
+                raise Exception("Error")
             pwd += self.table[ord(inp[i])-65+(int(inp[i+1])-1)*16]
         return pwd
 
@@ -48,4 +48,4 @@ def getpwd(inp):
     return a.get(inp)
     
 if __name__ == '__main__':
-    print getpwd('Password : ')
+    print(getpwd('Password : '))

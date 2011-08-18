@@ -28,9 +28,9 @@ class shell():
     def __init__(self):
         self.db = Index(shadow)
         try:
-            self.key = getpwd('password : ')
+            self.key = getpass('password : ')
         except Exception:
-            raise Exception, "getpwd fail ..."
+            raise Exception("getpwd fail ...")
 
     def loop(self):
         while True:
@@ -41,40 +41,42 @@ class shell():
                 elif buffer in self.commands:
                     eval("self.%s()" % buffer)
                 else:
-                    print "Command not found"
+                    print("Command not found")
             except Exception as e:
-                print e
+                raise
+                print(e)
 
     def _input(self, msg):
         sys.stdout.write(msg)
+        sys.stdout.flush()
         return sys.stdin.readline().replace('\n','')
 
     def help(self):
         for i in self.commands:
-            print i,":",self.commands[i]
+            print(i,":",self.commands[i])
 
     def index(self):
         all = self.db.get_all()
-        print "\nDatas :"
+        print("\nDatas :")
         if all == []:
-            print ">> None"
+            print(">> None")
         for i in all:
-            ctx = aes(self.key, b64decode(i[2]), 0, 'cbc')
-            plain = ctx.ciphering(b64decode(i[1]))
-            if sha512(plain).digest() != b64decode(i[3]):
-                raise Exception, "Fail to decrypt %d" % i[0]
-            j = plain.find('\0')
-            print str(i[0])+") "+plain[:j]+" : "+i[2]
+            ctx = aes(self.key, b64decode(i[2].encode()), 0, 'cbc')
+            plain = ctx.ciphering(b64decode(i[1].encode()))
+            if sha512(plain).digest() != b64decode(i[3].encode()):
+                raise Exception("Fail to decrypt %d" % i[0])
+            j = plain.find(b'\0')
+            print(str(i[0])+") "+plain[:j].decode()+" : "+i[2])
 
     def show(self):
         id = int(self._input("ID : "))
         data = self.db.get_data_by_id(id)
-        ctx = aes(self.key, b64decode(data[2]), 0, 'cbc')
-        plain = ctx.ciphering(b64decode(data[1]))
-        if sha512(plain).digest() != b64decode(data[3]):
-            raise Exception, "Fail to decrypt %d" % data[0]
-        j = plain.find('\0')
-        print ">> "+plain[:j]+" : "+plain[j+1:]
+        ctx = aes(self.key, b64decode(data[2].encode()), 0, 'cbc')
+        plain = ctx.ciphering(b64decode(data[1].encode()))
+        if sha512(plain).digest() != b64decode(data[3].encode()):
+            raise Exception("Fail to decrypt %d" % data[0])
+        j = plain.find(b'\0')
+        print(">> "+plain[:j].decode()+" : "+plain[j+1:].decode())
         self._input("\nPress [enter] to clean ...")
         self.clear()
 
@@ -84,23 +86,23 @@ class shell():
         iv = os.urandom(16)
         ctx = aes(self.key, iv, 1, 'cbc')
         buff = name+'\0'+plain
-        self.db.add_data(ctx.ciphering(buff), iv, sha512(buff).digest())
+        self.db.add_data(ctx.ciphering(buff.encode()), iv, sha512(buff.encode()).digest())
         self.clear()
-        print ">> SUCCESS"
+        print(">> SUCCESS")
 
     def rm_data(self):
         id = int(self._input('ID : '))
         self.db.rm_data(id)
-        print ">> SUCCESS"
+        print(">> SUCCESS")
 
     def update_key(self):
         oldkey = getpass('old password : ')
         if oldkey != self.key:
-            raise Exception, "Bad Key ..."
+            raise Exception("Bad Key ...")
         newkey = getpass('new password : ')
         if newkey != getpass('retype new password : '):
-            raise Exception, "Password doesn't match ..."
-        print "Update encryption key. Please wait ..."
+            raise Exception("Password doesn't match ...")
+        print("Update encryption key. Please wait ...")
         from xml.dom.minidom import parseString
         xml = parseString(self.db.get_xml())
         index = xml.getElementsByTagName("data")
@@ -111,7 +113,7 @@ class shell():
             ctx = aes(self.key, iv, 0, 'cbc')
             data = ctx.ciphering(data)
             if sha512(data).digest() != hash:
-                raise Exception, "FAIL to decrypt %d ..." % i.getAttribute("id")
+                raise Exception("FAIL to decrypt %d ..." % i.getAttribute("id"))
             iv = os.urandom(16)
             ctx = aes(newkey, iv, 1, 'cbc')
             data = ctx.ciphering(data)
@@ -126,15 +128,16 @@ class shell():
 def main():
     try:
         S = shell()
-        print "try help for help ;)"
+        print("try help for help ;)")
         S.loop()
     except Exception as e:
-        print e
+        raise
+        print(e)
         pass
     except KeyboardInterrupt:
-        print "Bye"
+        print("Bye")
     else: 
-        print "Bye"
+        print("Bye")
     sys.exit(0)
 
 if __name__ == '__main__':
