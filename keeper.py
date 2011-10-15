@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 #  Copyright (C) 2011 Yann GUIBET <yannguibet@gmail.com>
@@ -43,7 +43,6 @@ class shell():
                 else:
                     print("Command not found")
             except Exception as e:
-                raise
                 print(e)
 
     def _input(self, msg):
